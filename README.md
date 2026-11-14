@@ -217,80 +217,16 @@ This guide sets up a mock where a "bare-metal" server in Provider B reaches a pr
  
    Installation
  
-   ┌─────┬─────────────────────────────┬─────────────────────────────────┬────────────────────────────────────────────────────────────────────────┐
-   │  #  │           Symptom           │              Cause              │                                  Fix                                   │
-   ├─────┼─────────────────────────────┼─────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-   │     │ gpg: no valid OpenPGP data  │ The old guide's URL             │ Use the pkgs.k8s.io/.../Release.key URL from 2.1. Delete the broken    │
-   │ T1  │ found                       │ (https://k8s.io) returns a web  │ file first: sudo rm -f                                                 │
-   │     │                             │ page, not a key                 │ /etc/apt/keyrings/kubernetes-archive-keyring.gpg                       │
-   ├─────┼─────────────────────────────┼─────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-   │     │ chmod: cannot access ...    │ The echo ... | sudo tee line    │ Rerun the echo line as one line, then check with cat                   │
-   │ T2  │ kubernetes.list             │ broke while pasting, so the     │ /etc/apt/sources.list.d/kubernetes.list                                │
-   │     │                             │ file was never created          │                                                                        │
-   ├─────┼─────────────────────────────┼─────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-   │     │ kubectl reports an          │                                 │ Keep one copy: sudo rm /usr/local/bin/kubectl && hash -r (keeps the    │
-   │ T3  │ unexpected version / which  │ Both install methods were used  │ apt copy) or sudo apt-get remove kubectl (keeps the binary)            │
-   │     │ -a shows two copies         │                                 │                                                                        │
-   ├─────┼─────────────────────────────┼─────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-   │ T4  │ kind version → syntax error │ The downloaded kind file is an  │ sudo rm -f $(which kind), then redo 2.2 and check that file ./kind     │
-   │     │  near unexpected token '<'  │ HTML page                       │ says ELF                                                               │
-   ├─────┼─────────────────────────────┼─────────────────────────────────┼────────────────────────────────────────────────────────────────────────┤
-   │ T5  │ curl -I https://lscr.io →   │ Not a problem: the registry has │ Your internet works. Ignore it.                                        │
-   │     │ HTTP/2 404                  │  no home page                   │                                                                        │
-   └─────┴─────────────────────────────┴─────────────────────────────────┴────────────────────────────────────────────────────────────────────────┘
+   
+#	Symptom	Cause	Fix
+T1	gpg: no valid OpenPGP data found	The old guide's URL (https://k8s.io) returns a web page, not a key	Use the pkgs.k8s.io/.../Release.key URL from 2.1. Delete the broken file first: 
+sudo rm -f /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+T2	chmod: cannot access ... kubernetes.list	The echo ... | sudo tee line broke while pasting, so the file was never created	Rerun the echo line as one line, then check with: 
+cat /etc/apt/sources.list.d/kubernetes.list
+T3	kubectl reports an unexpected version / which -a shows two copies	Both install methods were used	Keep one copy: 
+sudo rm /usr/local/bin/kubectl && hash -r (keeps the apt copy) 
+or
 
-   Containers
- 
-   ┌─────┬────────────────────────┬──────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────┐
-   │  #  │        Symptom         │                      Cause                       │                             Fix                             │
-   ├─────┼────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
-   │ T6  │ Unable to find image   │ Normal: Docker downloads the image next          │ Wait for Status: Downloaded newer image. If the pull fails, │
-   │     │ ... locally            │                                                  │  use lscr.io/linuxserver/wireguard:latest                   │
-   ├─────┼────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
-   │     │ No such container, or  │                                                  │ Use the one-line commands. Clean up with docker rm -f       │
-   │ T7  │ 1000:latest: unable to │ The multi-line command broke while pasting       │ <name> and run it again                                     │
-   │     │  find image            │                                                  │                                                             │
-   ├─────┼────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
-   │     │ Conflict. The          │                                                  │                                                             │
-   │ T8  │ container name ... is  │ A container is left over from an earlier attempt │ docker rm -f <name>                                         │
-   │     │ already in use         │                                                  │                                                             │
-   ├─────┼────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
-   │ T9  │ network kind not found │ The kind cluster is missing                      │ kind get clusters; if needed, rerun 3.1                     │
-   ├─────┼────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
-   │     │ bm-server logs: no     │ The config isn't at /config/wg_confs/wg0.conf    │                                                             │
-   │ T10 │ valid tunnel config    │ (the old guide mounted the peer folder directly) │ Redo 4.2–4.5                                                │
-   │     │ found                  │                                                  │                                                             │
-   ├─────┼────────────────────────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
-   │     │ failed to create shim  │ The --sysctl net.ipv4.conf.all.src_valid_mark=1  │ Leave out --sysctl and SYS_MODULE, and limit AllowedIPs     │
-   │ T11 │ task: OCI runtime      │ flag is rejected on Docker Desktop               │ (4.4). Run docker inspect -f '{{.State.Error}}' bm-server   │
-   │     │ create failed          │                                                  │ to see the real error                                       │
-   └─────┴────────────────────────┴──────────────────────────────────────────────────┴─────────────────────────────────────────────────────────────┘
- 
-   Tunnel and network
- 
-   ┌─────┬────────────────────────────────────┬───────────────────────────────────────┬───────────────────────────────────────────────────────────┐
-   │  #  │              Symptom               │                 Cause                 │                            Fix                            │
-   ├─────┼────────────────────────────────────┼───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
-   │ T12 │ wg show on bm-server prints        │ The tunnel never started              │ docker logs bm-server 2>&1 | tail -20, then see T10/T11   │
-   │     │ nothing                            │                                       │                                                           │
-   ├─────┼────────────────────────────────────┼───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
-   │ T13 │ 0 B received, endpoint             │ UDP through host.docker.internal      │ Attach the gateway to provider-b-net and set Endpoint to  │
-   │     │ 192.168.65.254:51820               │ doesn't come back on Docker Desktop   │ its direct IP (4.1 + 4.4), then docker restart bm-server  │
-   ├─────┼────────────────────────────────────┼───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
-   │ T14 │ Endpoint is correct but there's    │ The gateway was recreated and has new │ Rebuild both from scratch (see below)                     │
-   │     │ still no handshake / keys differ   │  keys, so the client config is stale  │                                                           │
-   ├─────┼────────────────────────────────────┼───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
-   │     │ Handshake works but there's no     │ The gateway isn't forwarding or       │ Add the Part 5 rules. Check docker exec                   │
-   │ T15 │ +PONG                              │ NATing into kind                      │ wg-gateway-provider-a cat /proc/sys/net/ipv4/ip_forward   │
-   │     │                                    │                                       │ is 1                                                      │
-   ├─────┼────────────────────────────────────┼───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
-   │ T16 │ nc -zv prints nothing              │ BusyBox nc is silent, so the output   │ Use the Redis test: echo PING | nc -w 3 $REDIS_IP 6379 →  │
-   │     │                                    │ tells you nothing                     │ +PONG                                                     │
-   ├─────┼────────────────────────────────────┼───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
-   │ T17 │ echo $REDIS_IP is empty            │ A new terminal, or Redis isn't        │ docker ps, then rerun 6.1                                 │
-   │     │                                    │ running                               │                                                           │
-   └─────┴────────────────────────────────────┴───────────────────────────────────────┴───────────────────────────────────────────────────────────┘
- 
    Full WireGuard reset (fixes T14, or any mix of old and new keys)
  
    This leaves the kind cluster and Redis alone.
